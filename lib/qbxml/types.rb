@@ -1,7 +1,7 @@
 module Qbxml::Types
 
   XML_DIRECTIVES = {
-    :qb => [:qbxml, { version: '7.0' }],
+    :qb => [:qbxml, { version: '12.0' }],
     :qbpos => [:qbposxml, { version: '3.0' }]
   }.freeze
 

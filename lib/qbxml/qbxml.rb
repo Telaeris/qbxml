@@ -4,8 +4,8 @@ class Qbxml
   SCHEMA_PATH = File.expand_path('../../../schema', __FILE__)
 
   SCHEMAS = {
-    qb:    "#{SCHEMA_PATH}/qbxmlops70.xml",
-    qbpos: "#{SCHEMA_PATH}/qbposxmlops30.xml" 
+    qb:    "#{SCHEMA_PATH}/qbxmlops120.xml",
+    qbpos: "#{SCHEMA_PATH}/qbposxmlops30.xml"
   }.freeze
 
   HIDE_IVARS = [:@doc].freeze
@@ -35,7 +35,7 @@ class Qbxml
   #
   def to_qbxml(hash, opts = {})
     hash = Qbxml::Hash.from_hash(hash, camelize: true)
-    hash = namespace_qbxml_hash(hash) unless opts[:no_namespace] 
+    hash = namespace_qbxml_hash(hash) unless opts[:no_namespace]
     validate_qbxml_hash(hash) if opts[:validate]
 
     Qbxml::Hash.to_xml(hash, xml_directive: XML_DIRECTIVES[@schema])
