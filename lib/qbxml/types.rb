@@ -12,9 +12,10 @@ module Qbxml::Types
   INT_CAST   = Proc.new {|d| d ? Integer(d.to_i) : 0 }
   STR_CAST   = Proc.new {|d| d ? String(d) : ''}
   BIGDECIMAL_CAST   = Proc.new {|d| d ? BigDecimal.new(d) : 0.0}
+  AMT_CAST = Proc.new {|d| d ? '%.2f' % (d) : "0.00"}
 
   TYPE_MAP= {
-    "AMTTYPE"          => FLOAT_CAST,
+    "AMTTYPE"          => AMT_CAST,
     "BOOLTYPE"         => BOOL_CAST,
     "DATETIMETYPE"     => TIME_CAST,
     "DATETYPE"         => DATE_CAST,
@@ -24,7 +25,7 @@ module Qbxml::Types
     "IDTYPE"           => STR_CAST,
     "INTTYPE"          => INT_CAST,
     "PERCENTTYPE"      => FLOAT_CAST,
-    "PRICETYPE"        => FLOAT_CAST,
+    "PRICETYPE"        => AMT_CAST,
     "QUANTYPE"         => BIGDECIMAL_CAST,
     "STRTYPE"          => STR_CAST,
     "TIMEINTERVALTYPE" => STR_CAST
