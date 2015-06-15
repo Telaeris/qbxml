@@ -69,7 +69,7 @@ class Qbxml
   end
 
   def select_schema(schema_key)
-    SCHEMAS[schema_key] || raise("invalid schema, must be one of #{SCHEMA.keys.inspect}")
+    SCHEMAS[schema_key] || raise("invalid schema, must be one of #{SCHEMAS.keys.inspect}")
   end
 
 # hash to qbxml

@@ -11,13 +11,13 @@ class Qbxml::Hash < ::Hash
   ATTR_ROOT    = 'xml_attributes'.freeze
   IGNORED_KEYS = [ATTR_ROOT]
 
-  
+
   def self.from_hash(hash, opts = {}, &block)
     key_proc = \
       if opts[:camelize]
-        lambda { |k| k.camelize } 
+        lambda { |k| k.camelize }
       elsif opts[:underscore]
-        lambda { |k| k.underscore } 
+        lambda { |k| k.underscore }
       end
 
     deep_convert(hash, opts, &key_proc)
@@ -47,21 +47,27 @@ private
     opts[:attributes]      ||= (hash.delete(ATTR_ROOT) || {})
     opts[:xml_directive]   ||= [:xml, {}]
     opts[:builder]         ||= Builder::XmlMarkup.new(indent: opts[:indent])
-    opts[:skip_types]      = true unless opts.key?(:skip_types) 
+    opts[:skip_types]      = true unless opts.key?(:skip_types)
     opts[:skip_instruct]   = false unless opts.key?(:skip_instruct)
     builder = opts[:builder]
-    
+
     unless opts.delete(:skip_instruct)
       builder.instruct!(opts[:xml_directive].first, opts[:xml_directive].last)
     end
 
     builder.tag!(opts[:root], opts.delete(:attributes)) do
-      hash.each do |key, val| 
+      hash.each do |key, val|
         case val
         when Hash
           self.hash_to_xml(val, opts.merge({root: key, skip_instruct: true}))
         when Array
-          val.map { |i| self.hash_to_xml(i, opts.merge({root: key, skip_instruct: true})) }
+          if key == "AddLineItems"
+            val.map { |i|
+              self.hash_to_xml(i.values.first, opts.merge({root: i.keys.first, skip_instruct: true}))
+            }
+          else
+            val.map { |i| self.hash_to_xml(i, opts.merge({root: key, skip_instruct: true})) }
+          end
         else
           builder.tag!(key, val, {})
         end
@@ -70,7 +76,7 @@ private
       yield builder if block_given?
     end
   end
-  
+
   def self.xml_to_hash(node, hash = {}, opts = {})
     node_hash = {CONTENT_ROOT => '', ATTR_ROOT => {}}
     name = node.name
@@ -129,7 +135,7 @@ private
   def self.deep_convert(hash, opts = {}, &block)
     hash.inject(self.new) do |h, (k,v)|
       k = k.to_s
-      ignored = IGNORED_KEYS.include?(k) 
+      ignored = IGNORED_KEYS.include?(k)
       if ignored
         h[k] = v
       else
