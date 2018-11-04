@@ -1,11 +1,11 @@
 module Qbxml::Types
 
   XML_DIRECTIVES = {
-    :qb => [:qbxml, { version: '12.0' }],
-    :qbpos => [:qbposxml, { version: '3.0' }]
+    :qb => :qbxml,
+    :qbpos => :qbposxml
   }.freeze
 
-  FLOAT_CAST = Proc.new {|d| d ? Float(d) : 0.0}
+  FLOAT_CAST = Proc.new {|d| d ? d.to_f : 0.0}
   BOOL_CAST  = Proc.new {|d| d ? (d.to_s.downcase == 'true' ? true : false) : false }
   DATE_CAST  = Proc.new {|d| d ? Date.parse(d).strftime("%Y-%m-%d") : Date.today.strftime("%Y-%m-%d") }
   TIME_CAST  = Proc.new {|d| d ? Time.parse(d).xmlschema : Time.now.xmlschema }
@@ -31,11 +31,14 @@ module Qbxml::Types
     "TIMEINTERVALTYPE" => STR_CAST
   }
 
+  # Strings in tag names that should be capitalized in QB's XML
   ACRONYMS = ['AP', 'AR', 'COGS', 'COM', 'UOM', 'QBXML', 'UI', 'AVS', 'ID',
               'PIN', 'SSN', 'COM', 'CLSID', 'FOB', 'EIN', 'UOM', 'PO', 'PIN', 'QB']
 
-  ActiveSupport::Inflector.inflections do |inflect|
-    ACRONYMS.each { |a| inflect.acronym a }
-  end
+  # Based on the regexp in ActiveSupport::Inflector.camelize
+  # Substring 1: Start of string, lower case letter, or slash
+  # Substring 2: One of the acronyms above, In Capitalized Casing
+  # Substring 3: End of string or capital letter
+  ACRONYM_REGEXP = Regexp.new("(?:(^|[a-z]|\\/))(#{ACRONYMS.map{|a| a.capitalize}.join("|")})([A-Z]|$)")
 
 end

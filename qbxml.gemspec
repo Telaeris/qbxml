@@ -6,8 +6,8 @@ require 'qbxml/version'
 Gem::Specification.new do |gem|
   gem.name          = "qbxml"
   gem.version       = Qbxml::VERSION
-  gem.authors       = ["Alex Skryl"]
-  gem.email         = ["rut216@gmail.com"]
+  gem.authors       = ["Alex Skryl", "Jason Barnabe"]
+  gem.email         = ["rut216@gmail.com", "jason.barnabe@gmail.com"]
   gem.description   = %q{Quickbooks XML Parser}
   gem.summary       = %q{Quickbooks XML Parser and Validation Tool}
   gem.homepage      = ""
@@ -17,7 +17,14 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
-  gem.add_dependency('activesupport', '>= 3.2.9')
+  gem.add_dependency('activesupport', '>= 4.1.0')
   gem.add_dependency('nokogiri', '~> 1.5')
   gem.add_dependency('builder', '~> 3.0')
+
+  gem.add_development_dependency('pry')
+  gem.add_development_dependency('pry-nav')
+  gem.add_development_dependency('rspec')
+  gem.add_development_dependency('simplecov')
+  gem.add_development_dependency('rake')
+  gem.add_development_dependency('appraisal')
 end
