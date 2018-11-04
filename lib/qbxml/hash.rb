@@ -15,7 +15,11 @@ class Qbxml::Hash < ::Hash
   def self.from_hash(hash, opts = {}, &block)
     key_proc = \
       if opts[:camelize]
-        lambda { |k| k.camelize }
+        lambda { |k|
+          # QB wants things like ListID, not ListId. Adding inflections then using camelize can accomplish
+          # the same thing, but then the inflections will apply to everything the user does everywhere.
+          k.camelize.gsub(Qbxml::Types::ACRONYM_REGEXP) { "#{$1}#{$2.upcase}#{$3}" }
+        }
       elsif opts[:underscore]
         lambda { |k| k.underscore }
       end
@@ -45,14 +49,14 @@ private
     opts[:indent]          ||= 2
     opts[:root]            ||= :hash
     opts[:attributes]      ||= (hash.delete(ATTR_ROOT) || {})
-    opts[:xml_directive]   ||= [:xml, {}]
     opts[:builder]         ||= Builder::XmlMarkup.new(indent: opts[:indent])
     opts[:skip_types]      = true unless opts.key?(:skip_types)
     opts[:skip_instruct]   = false unless opts.key?(:skip_instruct)
     builder = opts[:builder]
 
     unless opts.delete(:skip_instruct)
-      builder.instruct!(opts[:xml_directive].first, opts[:xml_directive].last)
+      builder.instruct!(:xml, :encoding => "ISO-8859-1")
+      builder.instruct!(opts[:schema], version: opts[:version])
     end
 
     builder.tag!(opts[:root], opts.delete(:attributes)) do
@@ -66,7 +70,12 @@ private
               self.hash_to_xml(i.values.first, opts.merge({root: i.keys.first, skip_instruct: true}))
             }
           else
-            val.map { |i| self.hash_to_xml(i, opts.merge({root: key, skip_instruct: true})) }
+            val.map { |i|
+              if i.is_a?(String)
+                next builder.tag!(key, i, {})
+              end
+              next self.hash_to_xml(i, opts.merge({root: key, skip_instruct: true}))
+            }
           end
         else
           builder.tag!(key, val, {})
@@ -81,12 +90,24 @@ private
     node_hash = {CONTENT_ROOT => '', ATTR_ROOT => {}}
     name = node.name
     schema = opts[:schema]
+    opts[:typecast_cache] ||= {}
+    opts[:is_repetitive_cache] ||= {}
 
     # Insert node hash into parent hash correctly.
     case hash[name]
-    when Array then hash[name] << node_hash
-    when Hash  then hash[name] = [hash[name], node_hash]
-    else hash[name] = node_hash
+      when Array
+        hash[name] << node_hash
+      when Hash, String
+        # This parent has multiple nodes with the same name, but when we checked the first time,
+        # we found it is not defined as repetitive. I guess this means the schema is a liar.
+        hash[name] = [hash[name], node_hash]
+      else
+        # We didn't see this node name under this parent yet.
+        if is_repetitive?(schema, node.path, opts[:is_repetitive_cache])
+          hash[name] = [node_hash]
+        else
+          hash[name] = node_hash
+        end
     end
 
     # Handle child elements
@@ -109,12 +130,14 @@ private
       node_hash.delete(CONTENT_ROOT)
     elsif node_hash[CONTENT_ROOT].present?
       node_hash.delete(ATTR_ROOT)
-      hash[name] = \
-        if schema
-          typecast(schema, node.path, node_hash[CONTENT_ROOT])
-        else
-          node_hash[CONTENT_ROOT]
-        end
+      v = schema ? typecast(schema, node.path, node_hash[CONTENT_ROOT], opts[:typecast_cache]) : node_hash[CONTENT_ROOT]
+      # We only updated the last element
+      if hash[name].is_a?(Array)
+        hash[name].pop
+        hash[name] << v
+      else
+        hash[name] = v
+      end
     else
       hash[name] = node_hash[CONTENT_ROOT]
     end
@@ -125,11 +148,27 @@ private
 
 private
 
-  def self.typecast(schema, xpath, value)
+  def self.typecast(schema, xpath, value, typecast_cache)
     type_path = xpath.gsub(/\[\d+\]/,'')
-    type_proc = Qbxml::TYPE_MAP[schema.xpath(type_path).first.try(:text)]
+    # This is fairly expensive. Cache it for better performance when parsing lots of records of the same type.
+    type_proc = typecast_cache[type_path] ||= Qbxml::TYPE_MAP[schema.xpath(type_path).first.try(:text)]
     raise "#{xpath} is not a valid type" unless type_proc
     type_proc[value]
+  end
+
+  # Determines if the node is repetitive. Just because something is repetitive doesn't mean it always repeats.
+  # For example, a customer query could return 1 result or 100, but in both cases, we should be returning an
+  # Array.
+  def self.is_repetitive?(schema, xpath, is_repetitive_cache)
+    # Yes, we are parsing comments.
+    comment_path = xpath.gsub(/\[\d+\]/,'') + "/comment()"
+    return is_repetitive_cache[comment_path] || parse_repetitive_from_comment(schema, comment_path)
+  end
+
+  def self.parse_repetitive_from_comment(schema, comment_path)
+    comment = schema.xpath(comment_path).first
+    return false if comment.nil?
+    return comment.text.include?('may rep')
   end
 
   def self.deep_convert(hash, opts = {}, &block)
