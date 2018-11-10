@@ -36,7 +36,7 @@ class Qbxml
   def to_qbxml(hash, opts = {})
     hash = Qbxml::Hash.from_hash(hash, camelize: true)
     hash = namespace_qbxml_hash(hash) unless opts[:no_namespace]
-    validate_qbxml_hash(hash) if opts[:validate]
+    # validate_qbxml_hash(hash) if opts[:validate]
 
     Qbxml::Hash.to_xml(hash, xml_directive: XML_DIRECTIVES[@schema])
   end
